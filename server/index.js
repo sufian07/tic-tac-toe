@@ -1,9 +1,12 @@
+const http = require('http')
 const express = require('express')
 const consola = require('consola')
 const { Nuxt, Builder } = require('nuxt')
-// const socket = require('socket.io');
-// const io = require('socket.io')(server);
+const SocketIO = require('socket.io');
+
 const app = express()
+const server = http.createServer(app)
+const io = SocketIO(server)
 
 // Import and Set Nuxt.js options
 const config = require('../nuxt.config.js')
@@ -26,10 +29,28 @@ async function start () {
   app.use(nuxt.render)
 
   // Listen the server
-  app.listen(port, host)
+  server.listen(port, host)
   consola.ready({
     message: `Server listening on http://${host}:${port}`,
     badge: true
+  })
+
+  const messages = []
+  io.on('connection', (socket) => {
+    console.log('New user connected');
+    socket.on('last-messages', function (fn) {
+      fn(messages.slice(-50))
+    })
+    // socket.on('send-message', function (message) {
+    //   console.log('New message :: ', message);
+    //   messages.push(message)
+    //   socket.broadcast.emit('new-message', message)
+    // })
+    socket.on('join', function (user) {
+      console.log('New user :: ', user);
+      socket.broadcast.emit('user-joined', user)
+      //io.emit('user-joined', user)
+    })
   })
 }
 start()
