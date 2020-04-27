@@ -3,7 +3,7 @@ module.exports = {
   up: (queryInterface, Sequelize) => {
     return queryInterface.createTable('Games', {
       id: {
-        allowNull: false,
+        allownull: false,
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER
@@ -11,12 +11,61 @@ module.exports = {
       name: {
         type: Sequelize.STRING
       },
+      firstStepper: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false,
+      },
+      currentStepper: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false,
+      },
+      status: {
+        type: Sequelize.ENUM,
+        values: ['pending', 'accepted', 'started', 'resigned', 'completed'],
+        defaultValue: 'pending',
+      },
+      field1: {
+        type: Sequelize.STRING,
+        defaultValue: '',
+      },
+      field2: {
+        type: Sequelize.STRING,
+        defaultValue: '',
+      },
+      field3: {
+        type: Sequelize.STRING,
+        defaultValue: '',
+      },
+      field4: {
+        type: Sequelize.STRING,
+        defaultValue: '',
+      },
+      field5: {
+        type: Sequelize.STRING,
+        defaultValue: '',
+      },
+      field6: {
+        type: Sequelize.STRING,
+        defaultValue: '',
+      },
+      field7: {
+        type: Sequelize.STRING,
+        defaultValue: '',
+      },
+      field8: {
+        type: Sequelize.STRING,
+        defaultValue: '',
+      },
+      field9: {
+        type: Sequelize.STRING,
+        defaultValue: '',
+      },
       createdAt: {
-        allowNull: false,
+        allownull: false,
         type: Sequelize.DATE
       },
       updatedAt: {
-        allowNull: false,
+        allownull: false,
         type: Sequelize.DATE
       }
     });

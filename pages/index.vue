@@ -11,36 +11,53 @@
               v-if="challange"
               @click="resign"
               variant="warning">Resign</b-button>
-            <b-button
-              v-if="name"
-              @click="signOut"
-              variant="danger">Sign Out</b-button>
           </b-button-group>
         </b-row>
-        <div v-if="name">
           <b-row v-if="challange">
             <b-col cols="2"></b-col>
             <b-col cols="8">
               <b-row>
                 <div class="tic-container">
-                    <b-col cols="4" class="tic-cell">1</b-col>
-                    <b-col cols="4" class="tic-cell">2</b-col>
-                    <b-col cols="4" class="tic-cell">3</b-col>
-                    <b-col cols="4" class="tic-cell">4</b-col>
-                    <b-col cols="4" class="tic-cell">5</b-col>
-                    <b-col cols="4" class="tic-cell">6</b-col>
-                    <b-col cols="4" class="tic-cell">7</b-col>
-                    <b-col cols="4" class="tic-cell">8</b-col>
-                    <b-col cols="4" class="tic-cell">9</b-col>
+                    <b-col
+                      v-for="cell in cells"
+                      :key="cell"
+                      cols="4"
+                      @click="step(cell)"
+                      class="tic-cell">
+                      <span v-if="game[`field${cell}`]"> {{ game[`field${cell}`] }}</span>
+                      <span class="hidden" v-else> x</span>
+                    </b-col>
                 </div>
               </b-row>
               <b-row class="user-container">
                 <b-col class="user own">
                   <p></p>
-                  <p><b>Name:</b> {{ name }}</p>
+                  <p>
+                    You
+                   <b-spinner
+                    v-if="firstUser == game.currentStepper"
+                    type="grow"
+                    label="Spinning"></b-spinner>
+                  </p>
+                  <hr />
                   <p><b>Chance to win:</b> {{ odd }}%</p>
                 </b-col>
-                <b-col class="user other">4</b-col>
+                <b-col class="user other">
+                  <div v-if="game.status == 'pending'">
+                    Give your friend this link <span class="link">http://localhost:3000?game={{ game.name }}</span> to join
+                  </div>
+                  <div v-else>
+                    <p></p>
+                    <p>
+                      Opposition
+                      <b-spinner
+                        v-if="secondUser == game.currentStepper"
+                        type="grow" label="Spinning"></b-spinner>
+                    </p>
+                    <hr />
+                    <p><b>Chance to win:</b> {{ oddOpposition }}%</p>
+                  </div>
+                </b-col>
               </b-row>
             </b-col>
           </b-row>
@@ -50,34 +67,7 @@
               @click="startChallange"
               variant="success">Start Challange</b-button>
           </b-row>
-        </div>
-        <div v-else>
-          <div class="flex-middle">
-            <b-form @submit="addName" inline>
-              <b-input-group prepend="@" class="mb-2 mr-sm-2 mb-sm-0">
-                <b-input
-                  id="inline-form-input-username"
-                  v-model="form.name"
-                  placeholder="Enter Name"></b-input>
-              </b-input-group>
-              <b-button type="submit" variant="primary">Add</b-button>
-            </b-form>
-          </div>
-        </div>
       </b-col>
-      <!-- <b-col cols="4" class="sidebar">
-        <b-row class="name-header">
-          <h2>{{ name }}</h2>
-        </b-row>
-        <b-row class="user-list-con">
-          <h4>Online Users</h4>
-          <ul class="user-list">
-            <li v-for="user in users" :key="user.userName">
-              {{ user.userName }}
-            </li>
-          </ul>
-        </b-row>
-      </b-col> -->
     </b-row>
   </b-container>
 </template>
@@ -92,29 +82,47 @@ export default {
   },
   data: function() {
     return {
-      name: localStorage.name || '',
+      cells: [1,2,3,4,5,6,7,8,9],
       challange: localStorage.challange || '',
-      messages: [],
-      users: {},
       odd: 100,
+      oddOpposition: 100,
       form: {
         name: '',
       },
+      game: {},
+      takingChallange: false,
+      firstUser: localStorage.firstUser == 'true' || false,
+      secondUser: localStorage.secondUser == 'true' || false,
     };
   },
   beforeMount () {
-    // socket.on('new-message', (message) => {
-    //   this.messages.push(message)
-    // })
-    socket.on('user-joined', (user) => {
-      if (!this.users[user.userName]) {
-        this.users[user.userName] = user;
+    const game = ((location.search || '').split('?')[1] || '').split("=");
+    if(game[0] == 'game') {
+      this.takingChallange = true;
+      this.challange = game[1];
+      this.firstUser = false;
+      this.secondUser = true;
+
+      localStorage.challange = this.challange;
+      localStorage.firstUser = this.firstUser;
+      localStorage.secondUser = this.secondUser;
+
+      socket.emit('take-challange', {name: game[1]})
+    }
+    socket.on('game', (game) => {
+      console.log("GAME :: ", game);
+      this.game = game;
+      if (this.name == this.game.firstUser) {
+        this.game.otherUser = this.game.secondUser;
       }
-      console.log('USER JOINED ::', user);
+      this.challange = game.name;
+      localStorage.challange = game.name;
     })
   },
   mounted() {
-    this.join();
+    if (!this.takingChallange) {
+      this.join();
+    }
   },
   methods: {
     makeName() {
@@ -130,38 +138,43 @@ export default {
     startChallange() {
       var name = this.makeName();
       this.challange = name;
+      this.firstUser = true;
+      this.secondUser = false;
+
       localStorage.challange = name;
+      localStorage.firstUser = true;
+      localStorage.secondUser = false;
+
+      socket.emit('make-challange', {
+        name: name,
+      })
     },
     addName(e) {
       e.preventDefault();
       this.name = this.form.name;
       localStorage.name  = this.form.name;
     },
+    step(cell) {
+      console.log(cell);
+    },
     resign() {
       this.challange = '';
       localStorage.challange  = '';
+      socket.emit('resign-challange', {
+        id: this.game.id,
+      })
     },
     signOut() {
       this.name = '';
       localStorage.name  = '';
+      this.resign();
     },
     join() {
-      const message = {
-        userName: this.name,
+      const data = {
+        challange: this.challange,
         date: new Date().toJSON(),
       }
-      socket.emit('join', message)
-    },
-    sendMessage() {
-      if (!this.message.trim()) { return }
-      const message = {
-        userName: this.name,
-        date: new Date().toJSON(),
-        text: this.message.trim()
-      }
-      this.messages.push(message)
-      this.message = ''
-      socket.emit('send-message', message)
+      socket.emit('join', data)
     },
   }
 }
@@ -184,6 +197,14 @@ export default {
 .sign-out {
   border: 1px solid;
   background: transparent;
+}
+.spinner-grow {
+  width: 1rem;
+  height: 1rem;
+  margin-left: 1rem;
+}
+.hidden {
+  visibility: hidden;
 }
 .name-header {
   margin: 10px auto;
@@ -211,6 +232,9 @@ export default {
   padding: 1rem;
   background-color: #40b882;
 }
+.link {
+  color: blue
+}
 .user {
   background-color: #3b806f;
   margin: .5rem;
@@ -228,6 +252,7 @@ export default {
 }
 .tic-container .tic-cell {
   display: flex;
+  font-size: 2rem;
   padding: 2rem 1rem;
   text-align: center;
   align-items: center;
