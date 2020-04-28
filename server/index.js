@@ -13,30 +13,102 @@ const io = SocketIO(server)
 const config = require('../nuxt.config.js')
 config.dev = process.env.NODE_ENV !== 'production'
 
+const gameHash = [
+  '123', '456', '789',
+  '147', '258', '369',
+  '159', '357'
+];
+
+const updateOdds = async (id, odd1, odd2) => {
+  const oldGame = await db.Game.findOne({
+    where: { id },
+  });
+  if (oldGame && oldGame.id) {
+    await db.Game.update(
+      { odd1, odd2 },
+      { where: { id } }
+    )
+  }
+}
+
+const calculateOdds = async game => {
+  const firstUserHash = {};
+  const secondUserHash = {};
+  let score1 = 0;
+  let score2 = 0;
+  let totalStep = 0;
+
+  for (let i = 1; i < 10; i++) {
+    const hashKeys = gameHash.filter( key => key.includes(i))
+    hashKeys.forEach(hashKey => {
+      if(game[`field${i}`] == 'o') {
+        totalStep++;
+        firstUserHash[hashKey] = firstUserHash[hashKey] ? firstUserHash[hashKey]+1 : 1;
+      }
+      if(game[`field${i}`] == 'x') {
+        totalStep++;
+        secondUserHash[hashKey] = secondUserHash[hashKey] ? secondUserHash[hashKey]+1 : 1;
+      }
+    })
+  }
+  if(totalStep < 3) {
+    return {
+      odd1: 50,
+      odd2: 50
+    };
+  }
+  for (key in firstUserHash){
+    if(firstUserHash[key] == 3) {
+      return{
+        odd1: 100,
+        odd2: 0
+      }
+    }
+    score1 += (firstUserHash[key] * firstUserHash[key]);
+  }
+  for (key in secondUserHash){
+    if(secondUserHash[key] == 3) {
+      return{
+        odd1: 0,
+        odd2: 100
+      }
+    }
+    score2 += (secondUserHash[key] * secondUserHash[key]);
+  }
+  return{
+    odd1: (100 * score1)/(score1 + score2),
+    odd2: (100 * score2)/(score1 + score2)
+  }
+};
+
 const getGame = async id => {
   if(!id) {
     throw "You should give an id";
   }
-  return await db.Game.findOne({
+  const attributes = [
+    'id',
+    'status',
+    'name',
+    'firstStepper',
+    'currentStepper',
+    'odd1',
+    'odd2',
+    'status',
+    'field1',
+    'field2',
+    'field3',
+    'field4',
+    'field5',
+    'field6',
+    'field7',
+    'field8',
+    'field9',
+  ];
+  const game = await db.Game.findOne({
     where: { id },
-    attributes: [
-      'id',
-      'status',
-      'name',
-      'firstStepper',
-      'currentStepper',
-      'status',
-      'field1',
-      'field2',
-      'field3',
-      'field4',
-      'field5',
-      'field6',
-      'field7',
-      'field8',
-      'field9',
-    ]
+    attributes,
   });
+  return game;
 };
 
 async function start () {
@@ -63,18 +135,15 @@ async function start () {
   })
 
   io.on('connection', (socket) => {
-    console.log('New user connected');
     socket.on('join', async (user) => {
-      console.log('New user :: ', user);
       if (user.challange) {
         const challange = await db.Game.findOne(
           { where: {name: user.challange}}
         );
-        console.log('challange :: ', challange);
+
         if (challange && challange.id) {
           socket.join(challange.name);
           const game = await getGame(challange.id);
-          console.log('gamer :: ', game);
           io.to(challange.name).emit('game', game.get({ plain: true }))
         }
       }
@@ -106,6 +175,37 @@ async function start () {
         socket.emit('game-not-exist');
       }
     })
+
+    socket.on('step', async (data) => {
+      const oldGame = await db.Game.findOne({
+        where: { id: data.id },
+        attributes: ['id', 'name', `field${data.cell}`, 'currentStepper'],
+      });
+
+      if(
+        data.firstUser != oldGame.currentStepper
+        || oldGame.odd1 == 100 || oldGame.odd2 == 100
+      ) {
+        return;
+      }
+
+      if (oldGame && oldGame.id && !oldGame[`field${data.cell}`]) {
+        const update = {
+          currentStepper: !oldGame.currentStepper,
+        };
+        update[`field${data.cell}`] = data.firstUser ? 'o' : 'x'
+        await db.Game.update(
+          update,
+          { where: { id: oldGame.id } }
+        )
+        const {odd1, odd2} = await calculateOdds(await getGame(oldGame.id))
+        console.log('odd1, odd2',odd1, odd2);
+        await updateOdds(oldGame.id, odd1, odd2);
+        const game = await getGame(oldGame.id);
+        io.to(oldGame.name).emit('game', game.get({ plain: true }));
+      }
+    })
+
     socket.on('resign-challange', async (challange) => {
       const oldGame = await db.Game.findOne({
         where: { name: challange.id }

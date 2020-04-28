@@ -34,13 +34,22 @@
                   <p></p>
                   <p>
                     You
-                   <b-spinner
-                    v-if="firstUser == game.currentStepper"
-                    type="grow"
-                    label="Spinning"></b-spinner>
+                    <span
+                      class="winner"
+                      v-if="(!firstUser && game.odd2 == 100)
+                      || (firstUser && game.odd1 == 100)"> Winner !!</span>
+                    <span
+                      class="looser"
+                      v-if="(!firstUser && game.odd1 == 100)
+                      || (firstUser && game.odd2 == 100)"> Looser !!</span>
+                    <b-spinner
+                      v-if="firstUser == game.currentStepper
+                      && (game.odd1 != 100 && game.odd2 != 100)"
+                      type="grow"
+                      label="Spinning"></b-spinner>
                   </p>
                   <hr />
-                  <p><b>Chance to win:</b> {{ odd }}%</p>
+                  <p><b>Chance to win:</b> {{ firstUser ? game.odd1 : game.odd2 }}%</p>
                 </b-col>
                 <b-col class="user other">
                   <div v-if="game.status == 'pending'">
@@ -50,12 +59,21 @@
                     <p></p>
                     <p>
                       Opposition
+                      <span
+                        class="winner"
+                        v-if="(firstUser && game.odd2 == 100)
+                        || (!firstUser && game.odd1 == 100)"> Winner !!</span>
+                      <span
+                        class="looser"
+                        v-if="(!firstUser && game.odd2 == 100)
+                        || (firstUser && game.odd1 == 100)"> Looser !!</span>
                       <b-spinner
-                        v-if="secondUser == game.currentStepper"
+                        v-if="firstUser != game.currentStepper
+                        && (game.odd1 != 100 && game.odd2 != 100)"
                         type="grow" label="Spinning"></b-spinner>
                     </p>
                     <hr />
-                    <p><b>Chance to win:</b> {{ oddOpposition }}%</p>
+                    <p><b>Chance to win:</b> {{ firstUser ? game.odd2 : game.odd1 }}%</p>
                   </div>
                 </b-col>
               </b-row>
@@ -84,15 +102,12 @@ export default {
     return {
       cells: [1,2,3,4,5,6,7,8,9],
       challange: localStorage.challange || '',
-      odd: 100,
-      oddOpposition: 100,
       form: {
         name: '',
       },
       game: {},
       takingChallange: false,
       firstUser: localStorage.firstUser == 'true' || false,
-      secondUser: localStorage.secondUser == 'true' || false,
     };
   },
   beforeMount () {
@@ -101,20 +116,15 @@ export default {
       this.takingChallange = true;
       this.challange = game[1];
       this.firstUser = false;
-      this.secondUser = true;
 
       localStorage.challange = this.challange;
       localStorage.firstUser = this.firstUser;
-      localStorage.secondUser = this.secondUser;
 
       socket.emit('take-challange', {name: game[1]})
     }
     socket.on('game', (game) => {
       console.log("GAME :: ", game);
       this.game = game;
-      if (this.name == this.game.firstUser) {
-        this.game.otherUser = this.game.secondUser;
-      }
       this.challange = game.name;
       localStorage.challange = game.name;
     })
@@ -139,11 +149,9 @@ export default {
       var name = this.makeName();
       this.challange = name;
       this.firstUser = true;
-      this.secondUser = false;
 
       localStorage.challange = name;
       localStorage.firstUser = true;
-      localStorage.secondUser = false;
 
       socket.emit('make-challange', {
         name: name,
@@ -155,7 +163,19 @@ export default {
       localStorage.name  = this.form.name;
     },
     step(cell) {
-      console.log(cell);
+      if(
+        this.firstUser == this.game.currentStepper
+        && (this.game.odd1 != 100
+        || this.game.odd2 != 100)
+      ) {
+        socket.emit('step', {
+          id: this.game.id,
+          firstUser: this.firstUser,
+          cell,
+        })
+      } else {
+        console.log('Not your turn');
+      }
     },
     resign() {
       this.challange = '';
@@ -242,6 +262,12 @@ export default {
 }
 .middle {
   margin: auto;
+}
+.looser {
+  color: red;
+}
+.winner {
+  color: burlywood;
 }
 .flex-middle {
   display: flex;

@@ -11,6 +11,12 @@ module.exports = {
       name: {
         type: Sequelize.STRING
       },
+      odd1: {
+        type: Sequelize.INTEGER
+      },
+      odd2: {
+        type: Sequelize.INTEGER
+      },
       firstStepper: {
         type: Sequelize.BOOLEAN,
         defaultValue: false,

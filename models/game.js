@@ -4,6 +4,8 @@ module.exports = (sequelize, DataTypes) => {
     name: DataTypes.STRING,
     firstStepper: DataTypes.BOOLEAN,
     currentStepper: DataTypes.BOOLEAN,
+    odd1: DataTypes.INTEGER,
+    odd2: DataTypes.INTEGER,
     status: DataTypes.STRING,
     field1: DataTypes.STRING,
     field2: DataTypes.STRING,
