@@ -39,18 +39,22 @@ const calculateOdds = async game => {
   let totalStep = 0;
 
   for (let i = 1; i < 10; i++) {
+    if(game[`field${i}`]) {
+      totalStep++;
+    }
     const hashKeys = gameHash.filter( key => key.includes(i))
     hashKeys.forEach(hashKey => {
       if(game[`field${i}`] == 'o') {
-        totalStep++;
         firstUserHash[hashKey] = firstUserHash[hashKey] ? firstUserHash[hashKey]+1 : 1;
       }
       if(game[`field${i}`] == 'x') {
-        totalStep++;
         secondUserHash[hashKey] = secondUserHash[hashKey] ? secondUserHash[hashKey]+1 : 1;
       }
     })
   }
+  console.log('totalStep ::::: ', totalStep);
+  console.log('firstUserHash ::::: ', firstUserHash);
+  console.log('secondUserHash ::::: ', secondUserHash);
   if(totalStep < 3) {
     return {
       odd1: 50,
@@ -199,7 +203,7 @@ async function start () {
           { where: { id: oldGame.id } }
         )
         const {odd1, odd2} = await calculateOdds(await getGame(oldGame.id))
-        console.log('odd1, odd2',odd1, odd2);
+        console.log('odd1, odd2 ::::: ',odd1, odd2);
         await updateOdds(oldGame.id, odd1, odd2);
         const game = await getGame(oldGame.id);
         io.to(oldGame.name).emit('game', game.get({ plain: true }));

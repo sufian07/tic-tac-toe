@@ -12,10 +12,12 @@ module.exports = {
         type: Sequelize.STRING
       },
       odd1: {
-        type: Sequelize.INTEGER
+        type: Sequelize.INTEGER,
+        defaultValue: 50,
       },
       odd2: {
-        type: Sequelize.INTEGER
+        type: Sequelize.INTEGER,
+        defaultValue: 50,
       },
       firstStepper: {
         type: Sequelize.BOOLEAN,

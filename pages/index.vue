@@ -183,6 +183,7 @@ export default {
       socket.emit('resign-challange', {
         id: this.game.id,
       })
+      this.game = {};
     },
     signOut() {
       this.name = '';
